@@ -5,7 +5,24 @@ from PIL import Image
 import requests
 from pathlib import Path
 
-# Function to download and load the TFLite model
+# Add a background color to the app
+st.markdown(
+    """
+    <style>
+    .stApp {
+        background-color: #f0f8ff;
+    }
+    .stButton>button {
+        background-color: #4CAF50;
+        color: white;
+        font-size: 16px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+# Function to download and load the model
 @st.cache_resource
 def download_and_load_model():
     model_url = "https://drive.google.com/uc?export=download&id=1iO013Rqp0dOlHHoFuQsNQEWsBS2f11mj"
@@ -22,62 +39,51 @@ def download_and_load_model():
 # Load the TFLite model
 model = download_and_load_model()
 
-# Define the correct class order as in training
+# Define classes as per training
 classes = ["Mild Demented", "Moderate Demented", "Non Demented", "Very Mild Demented"]
 
-# Function to preprocess image and make a prediction
+# Function to preprocess image and make prediction
 def predict(image):
-    # Get input details from the model
     input_details = model.get_input_details()
     input_shape = input_details[0]['shape']
 
-    # Preprocess image
-    image = image.resize((input_shape[1], input_shape[2]))  # Resize to match model input
-    image = np.array(image).astype(np.float32) / 255.0  # Normalize and ensure type
-    image = np.expand_dims(image, axis=0)  # Add batch dimension
+    image = image.resize((input_shape[1], input_shape[2]))  
+    image = np.array(image).astype(np.float32) / 255.0
+    image = np.expand_dims(image, axis=0)  
 
-    # Run inference
     model.set_tensor(input_details[0]['index'], image)
     model.invoke()
     prediction = model.get_tensor(model.get_output_details()[0]['index'])
     return prediction
 
-# Streamlit app UI
-st.title("Alzheimer Classification Using MRI Scans")
+# App Layout
+st.title("🧠 Alzheimer's MRI Classification")
 st.markdown("""
-This application classifies MRI scans into four categories:
-- **Mild Demented**: Noticeable cognitive impairment, impacting daily life and decision-making.
-- **Moderate Demented**: Significant cognitive impairment, requiring assistance with daily tasks.
-- **Non Demented**: Normal brain function without signs of dementia.
-- **Very Mild Demented**: Early signs of cognitive decline, minimal impact on daily activities.
-
-Upload an MRI scan image below to classify it.
+Welcome to the **Alzheimer Classification Tool**! 🏥
+This app classifies MRI scans into stages of Alzheimer's disease using deep learning. Upload an MRI scan below, and the model will predict whether the scan indicates:
+- **Mild Demented**: Early cognitive decline
+- **Moderate Demented**: Significant cognitive decline
+- **Non Demented**: Healthy brain
+- **Very Mild Demented**: Early stage of cognitive impairment
 """)
 
 # File uploader
-uploaded_file = st.file_uploader("Upload an MRI scan image", type=["jpg", "png", "jpeg"])
+uploaded_file = st.file_uploader("Upload MRI Scan", type=["jpg", "png", "jpeg"])
 
 if uploaded_file is not None:
-    # Display the uploaded image
     image = Image.open(uploaded_file)
     st.image(image, caption="Uploaded Image", use_column_width=True)
 
-    # Button to trigger prediction
     if st.button("Classify MRI Scan"):
-        with st.spinner("Classifying..."):
-            # Make prediction
+        with st.spinner("Classifying... Please wait"):
             prediction = predict(image)
             predicted_class = classes[np.argmax(prediction)]
 
-            # Display prediction result
-            st.subheader("Prediction Result")
-            st.write(f"**{predicted_class}**")
-            
-            # Explanation of predicted class
+            st.subheader(f"Prediction: **{predicted_class}**")
             explanations = {
-                "Mild Demented": "Noticeable cognitive impairment, impacting daily life and decision-making.",
-                "Moderate Demented": "Significant cognitive impairment, requiring assistance with daily tasks.",
-                "Non Demented": "Normal brain function without signs of dementia.",
-                "Very Mild Demented": "Early signs of cognitive decline, minimal impact on daily activities."
+                "Mild Demented": "Early signs of cognitive decline.",
+                "Moderate Demented": "Significant cognitive decline.",
+                "Non Demented": "Normal brain function.",
+                "Very Mild Demented": "Very early stage of cognitive impairment."
             }
-            st.write(f"**Explanation:** {explanations[predicted_class]}")
+            st.write(f"Explanation: {explanations[predicted_class]}")
