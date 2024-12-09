@@ -71,27 +71,38 @@ This app classifies MRI scans into stages of Alzheimer's disease using deep lear
 # File uploader
 uploaded_file = st.file_uploader("Upload an MRI scan image", type=["jpg", "png", "jpeg"])
 
+# Check if the uploaded file is an MRI scan (basic check by image mode)
 if uploaded_file is not None:
-    # Display the uploaded image
-    image = Image.open(uploaded_file)
-    st.image(image, caption="Uploaded Image", use_column_width=True)
+    try:
+        # Open the image
+        image = Image.open(uploaded_file)
 
-    # Button to trigger prediction
-    if st.button("Classify MRI Scan"):
-        with st.spinner("Classifying..."):
-            # Make prediction
-            prediction = predict(image)
-            predicted_class = classes[np.argmax(prediction)]
+        # Check if the image is a valid MRI scan (basic check)
+        if image.mode not in ['RGB', 'L']:
+            st.error("Invalid image format! Please upload a valid MRI scan image.")
+        else:
+            # Display the uploaded image
+            st.image(image, caption="Uploaded Image", use_column_width=True)
 
-            # Display prediction result
-            st.subheader("Prediction Result")
-            st.write(f"**{predicted_class}**")
-            
-            # Explanation of predicted class
-            explanations = {
-                "Mild Demented": "Noticeable cognitive impairment, impacting daily life and decision-making.",
-                "Moderate Demented": "Significant cognitive impairment, requiring assistance with daily tasks.",
-                "Non Demented": "Normal brain function without signs of dementia.",
-                "Very Mild Demented": "Early signs of cognitive decline, minimal impact on daily activities."
-            }
-            st.write(f"*Explanation:* {explanations[predicted_class]}")
+            # Button to trigger prediction
+            if st.button("Classify MRI Scan"):
+                with st.spinner("Classifying..."):
+                    # Make prediction
+                    prediction = predict(image)
+                    predicted_class = classes[np.argmax(prediction)]
+
+                    # Display prediction result
+                    st.subheader("Prediction Result")
+                    st.write(f"**{predicted_class}**")
+                    
+                    # Explanation of predicted class
+                    explanations = {
+                        "Mild Demented": "Noticeable cognitive impairment, impacting daily life and decision-making.",
+                        "Moderate Demented": "Significant cognitive impairment, requiring assistance with daily tasks.",
+                        "Non Demented": "Normal brain function without signs of dementia.",
+                        "Very Mild Demented": "Early signs of cognitive decline, minimal impact on daily activities."
+                    }
+                    st.write(f"*Explanation:* {explanations[predicted_class]}")
+
+    except Exception as e:
+        st.error(f"Error processing the image: {e}")
