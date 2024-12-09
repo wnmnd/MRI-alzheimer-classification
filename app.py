@@ -69,22 +69,29 @@ This app classifies MRI scans into stages of Alzheimer's disease using deep lear
 """)
 
 # File uploader
-uploaded_file = st.file_uploader("Upload MRI Scan", type=["jpg", "png", "jpeg"])
+uploaded_file = st.file_uploader("Upload an MRI scan image", type=["jpg", "png", "jpeg"])
 
 if uploaded_file is not None:
+    # Display the uploaded image
     image = Image.open(uploaded_file)
     st.image(image, caption="Uploaded Image", use_column_width=True)
 
+    # Button to trigger prediction
     if st.button("Classify MRI Scan"):
-        with st.spinner("Classifying... Please wait"):
+        with st.spinner("Classifying..."):
+            # Make prediction
             prediction = predict(image)
             predicted_class = classes[np.argmax(prediction)]
 
-            st.subheader(f"Prediction: **{predicted_class}**")
+            # Display prediction result
+            st.subheader("Prediction Result")
+            st.write(f"{predicted_class}")
+            
+            # Explanation of predicted class
             explanations = {
                 "Mild Demented": "Noticeable cognitive impairment, impacting daily life and decision-making.",
                 "Moderate Demented": "Significant cognitive impairment, requiring assistance with daily tasks.",
                 "Non Demented": "Normal brain function without signs of dementia.",
                 "Very Mild Demented": "Early signs of cognitive decline, minimal impact on daily activities."
             }
-            st.write(f"Explanation: {explanations[predicted_class]}")
+            st.write(f"*Explanation:* {explanations[predicted_class]}")
