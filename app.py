@@ -59,7 +59,7 @@ def predict(image):
 # App Layout
 st.title("🧠 Alzheimer's MRI Classification")
 st.markdown("""
-Welcome to the **Alzheimer Classification Tool**! 🏥
+Welcome to the **Alzheimer Classification Tool**! 
 
 This app classifies MRI scans into stages of Alzheimer's disease using deep learning. Upload an MRI scan below, and the model will predict whether the scan indicates:
 - **Mild Demented**: Noticeable cognitive impairment, impacting daily life and decision-making.
