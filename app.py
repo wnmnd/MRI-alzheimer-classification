@@ -5,15 +5,15 @@ from PIL import Image
 import requests
 from pathlib import Path
 
-# Add a background color to the app
+# Add a background color to the app and update button styling
 st.markdown(
     """
     <style>
     .stApp {
-        background-color: #f0f8ff;
+        background-color: #f5f5dc;  
     }
     .stButton>button {
-        background-color: #4CAF50;
+        background-color: #8B4513;  
         color: white;
         font-size: 16px;
     }
@@ -60,11 +60,12 @@ def predict(image):
 st.title("🧠 Alzheimer's MRI Classification")
 st.markdown("""
 Welcome to the **Alzheimer Classification Tool**! 🏥
+
 This app classifies MRI scans into stages of Alzheimer's disease using deep learning. Upload an MRI scan below, and the model will predict whether the scan indicates:
-- **Mild Demented**: Early cognitive decline
-- **Moderate Demented**: Significant cognitive decline
-- **Non Demented**: Healthy brain
-- **Very Mild Demented**: Early stage of cognitive impairment
+- **Mild Demented**: Noticeable cognitive impairment, impacting daily life and decision-making.
+- **Moderate Demented**: Significant cognitive impairment, requiring assistance with daily tasks.
+- **Non Demented**: Normal brain function without signs of dementia.
+- **Very Mild Demented**: Early signs of cognitive decline, minimal impact on daily activities.
 """)
 
 # File uploader
@@ -81,9 +82,9 @@ if uploaded_file is not None:
 
             st.subheader(f"Prediction: **{predicted_class}**")
             explanations = {
-                "Mild Demented": "Early signs of cognitive decline.",
-                "Moderate Demented": "Significant cognitive decline.",
-                "Non Demented": "Normal brain function.",
-                "Very Mild Demented": "Very early stage of cognitive impairment."
+                "Mild Demented": "Noticeable cognitive impairment, impacting daily life and decision-making.",
+                "Moderate Demented": "Significant cognitive impairment, requiring assistance with daily tasks.",
+                "Non Demented": "Normal brain function without signs of dementia.",
+                "Very Mild Demented": Early signs of cognitive decline, minimal impact on daily activities."
             }
             st.write(f"Explanation: {explanations[predicted_class]}")
