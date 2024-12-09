@@ -85,6 +85,6 @@ if uploaded_file is not None:
                 "Mild Demented": "Noticeable cognitive impairment, impacting daily life and decision-making.",
                 "Moderate Demented": "Significant cognitive impairment, requiring assistance with daily tasks.",
                 "Non Demented": "Normal brain function without signs of dementia.",
-                "Very Mild Demented": Early signs of cognitive decline, minimal impact on daily activities."
+                "Very Mild Demented": "Early signs of cognitive decline, minimal impact on daily activities."
             }
             st.write(f"Explanation: {explanations[predicted_class]}")
