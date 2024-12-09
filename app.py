@@ -27,23 +27,19 @@ classes = ["Mild Demented", "Moderate Demented", "Non Demented", "Very Mild Deme
 
 # Function to preprocess image and make a prediction
 def predict(image):
-    # Preprocess image
-    image = image.resize((224, 224))  # Resize to match model input
-    image = np.array(image) / 255.0   # Normalize the image
-    image = np.expand_dims(image, axis=0).astype(np.float32)  # Add batch dimension
-
-    # Get input and output details from the model
+    # Get input details from the model
     input_details = model.get_input_details()
-    output_details = model.get_output_details()
+    input_shape = input_details[0]['shape']
 
-    # Set the input tensor
-    model.set_tensor(input_details[0]['index'], image)
+    # Preprocess image
+    image = image.resize((input_shape[1], input_shape[2]))  # Resize to match model input
+    image = np.array(image).astype(np.float32) / 255.0  # Normalize and ensure type
+    image = np.expand_dims(image, axis=0)  # Add batch dimension
 
     # Run inference
+    model.set_tensor(input_details[0]['index'], image)
     model.invoke()
-
-    # Get prediction from the output tensor
-    prediction = model.get_tensor(output_details[0]['index'])
+    prediction = model.get_tensor(model.get_output_details()[0]['index'])
     return prediction
 
 # Streamlit app UI
