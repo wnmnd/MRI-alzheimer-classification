@@ -1,16 +1,31 @@
 import streamlit as st
-import numpy as np
-from PIL import Image
 import tensorflow as tf
+import requests
+from pathlib import Path
+
+# Function to download the model from Google Drive
+@st.cache_resource
+def download_and_load_model():
+    model_path = "alzheimer_densenet121.h5"
+    
+    # Check if the model file already exists locally
+    if not Path(model_path).exists():
+        st.write("Downloading model... Please wait.")
+        url = "https://drive.google.com/uc?export=download&id=1zKTzDOI5xBVzU7NGvifgmtrDe-uxwBq5"
+        response = requests.get(url, stream=True)
+        with open(model_path, "wb") as f:
+            for chunk in response.iter_content(chunk_size=1024):
+                if chunk:  # Ensure the chunk isn't empty
+                    f.write(chunk)
+        st.success("Model downloaded successfully!")
+    
+    # Load the model
+    return tf.keras.models.load_model(model_path)
 
 # Load the model
-@st.cache_resource
-def load_model():
-    return tf.keras.models.load_model('alzheimer_cnn_model.h5')
+model = download_and_load_model()
 
-model = load_model()
-
-# App title and introduction
+# App UI
 st.title("Alzheimer Classification Using MRI Scans")
 st.markdown("""
 This application classifies MRI scans into four categories:
@@ -27,6 +42,9 @@ uploaded_file = st.file_uploader("Upload an MRI scan image", type=["jpg", "png",
 
 if uploaded_file is not None:
     # Display the uploaded image
+    from PIL import Image
+    import numpy as np
+
     image = Image.open(uploaded_file)
     st.image(image, caption="Uploaded Image", use_column_width=True)
     
