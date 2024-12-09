@@ -3,24 +3,29 @@ import tensorflow as tf
 import requests
 from pathlib import Path
 
-# Function to download the model from Google Drive
+# Load the TFLite model
 @st.cache_resource
-def download_and_load_model():
-    model_path = "alzheimer_densenet121.h5"
-    
-    # Check if the model file already exists locally
-    if not Path(model_path).exists():
-        st.write("Downloading model... Please wait.")
-        url = "https://drive.google.com/uc?export=download&id=1zKTzDOI5xBVzU7NGvifgmtrDe-uxwBq5"
-        response = requests.get(url, stream=True)
-        with open(model_path, "wb") as f:
-            for chunk in response.iter_content(chunk_size=1024):
-                if chunk:  # Ensure the chunk isn't empty
-                    f.write(chunk)
-        st.success("Model downloaded successfully!")
-    
-    # Load the model
-    return tf.keras.models.load_model(model_path)
+def load_model():
+    interpreter = tf.lite.Interpreter(model_path="alzheimer_densenet121.tflite")
+    interpreter.allocate_tensors()
+    return interpreter
+
+model = load_model()
+
+# Preprocess and make prediction
+def predict(image):
+    input_details = model.get_input_details()
+    output_details = model.get_output_details()
+
+    # Preprocess image
+    image = np.expand_dims(image, axis=0).astype(np.float32)
+
+    # Run inference
+    model.set_tensor(input_details[0]['index'], image)
+    model.invoke()
+    prediction = model.get_tensor(output_details[0]['index'])
+    return prediction
+
 
 # Load the model
 model = download_and_load_model()
