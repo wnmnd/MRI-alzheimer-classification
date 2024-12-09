@@ -85,7 +85,7 @@ if uploaded_file is not None:
 
             # Display prediction result
             st.subheader("Prediction Result")
-            st.write(f"{predicted_class}")
+            st.write(f"**{predicted_class}**")
             
             # Explanation of predicted class
             explanations = {
