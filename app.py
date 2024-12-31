@@ -1,108 +1,106 @@
 import streamlit as st
 import numpy as np
 import tensorflow as tf
-from PIL import Image
-import requests
-from pathlib import Path
 
-# Add a background color to the app and update button styling
-st.markdown(
-    """
-    <style>
-    .stApp {
-        background-color: #f5f5dc;  
-    }
-    .stButton>button {
-        background-color: #8B4513;  
-        color: white;
-        font-size: 16px;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-# Function to download and load the model
-@st.cache_resource
-def download_and_load_model():
-    model_url = "https://drive.google.com/uc?export=download&id=1iO013Rqp0dOlHHoFuQsNQEWsBS2f11mj"
-    model_path = Path("cnn_model.tflite")
-    
-    if not model_path.exists():
-        with st.spinner("Downloading the model..."):
-            response = requests.get(model_url)
-            model_path.write_bytes(response.content)
-    interpreter = tf.lite.Interpreter(model_path=str(model_path))
+# Load the TFLite model
+def load_model(tflite_path):
+    interpreter = tf.lite.Interpreter(model_path=tflite_path)
     interpreter.allocate_tensors()
     return interpreter
 
-# Load the TFLite model
-model = download_and_load_model()
+# Preprocess text (You may need to adapt this based on your model's input requirements)
+def preprocess_text(text, max_length=100):
+    # Example preprocessing: Truncate or pad text to a fixed length
+    # Add any tokenizer or transformation specific to your training process
+    # This is just a placeholder.
+    return np.zeros((1, max_length), dtype=np.float32)
 
-# Define classes as per training
-classes = ["Mild Demented", "Moderate Demented", "Non Demented", "Very Mild Demented"]
-
-# Function to preprocess image and make prediction
-def predict(image):
-    input_details = model.get_input_details()
-    input_shape = input_details[0]['shape']
-
-    image = image.resize((input_shape[1], input_shape[2]))  
-    image = np.array(image).astype(np.float32) / 255.0
-    image = np.expand_dims(image, axis=0)  
-
-    model.set_tensor(input_details[0]['index'], image)
-    model.invoke()
-    prediction = model.get_tensor(model.get_output_details()[0]['index'])
+# Perform prediction
+def predict(interpreter, input_data):
+    input_index = interpreter.get_input_details()[0]['index']
+    output_index = interpreter.get_output_details()[0]['index']
+    interpreter.set_tensor(input_index, input_data)
+    interpreter.invoke()
+    prediction = interpreter.get_tensor(output_index)
     return prediction
 
-# App Layout
-st.title("🧠 Alzheimer's MRI Classification")
-st.markdown("""
-Welcome to the **Alzheimer Classification Tool**! 
+# Mapping labels
+LABELS = ['Religion', 'Age', 'Gender', 'Ethnicity', 'Not Bullying']
 
-This app classifies MRI scans into stages of Alzheimer's disease using deep learning. Upload an MRI scan below, and the model will predict whether the scan indicates:
-- **Mild Demented**: Noticeable cognitive impairment, impacting daily life and decision-making.
-- **Moderate Demented**: Significant cognitive impairment, requiring assistance with daily tasks.
-- **Non Demented**: Normal brain function without signs of dementia.
-- **Very Mild Demented**: Early signs of cognitive decline, minimal impact on daily activities.
-""")
+# Streamlit App
+def main():
+    st.set_page_config(page_title="Cyberbullying Detection", page_icon="🔍", layout="wide")
 
-# File uploader
-uploaded_file = st.file_uploader("Upload an MRI scan image", type=["jpg", "png", "jpeg"])
+    # Header
+    st.title("🔍 Cyberbullying Detection App")
+    st.markdown(
+        """
+        Welcome to the **Cyberbullying Detection App**! This tool uses a machine learning model to analyze 
+        text and identify potential categories of cyberbullying. It is designed to assist in understanding 
+        harmful online behavior and promote a safer digital environment.
+        """
+    )
+    st.image("https://via.placeholder.com/800x300.png?text=Cyberbullying+Awareness", use_column_width=True)
+    st.markdown("---")
 
-# Check if the uploaded file is an MRI scan (basic check by image mode)
-if uploaded_file is not None:
-    try:
-        # Open the image
-        image = Image.open(uploaded_file)
+    # Description Section
+    st.markdown(
+        """
+        ### How It Works
+        1. Enter any text in the input box below. 
+        2. Click on the **Detect Cyberbullying** button. 
+        3. The app will classify the text into one of the following categories:
+           - **Religion**
+           - **Age**
+           - **Gender**
+           - **Ethnicity**
+           - **Not Bullying**
 
-        # Check if the image is a valid MRI scan (basic check)
-        if image.mode not in ['RGB', 'L']:
-            st.error("Invalid image format! Please upload a valid MRI scan image.")
+        ### Why This Matters
+        Identifying cyberbullying is crucial in combating harmful online interactions. 
+        By categorizing the behavior, we can better understand its nature and take steps toward prevention.
+        """
+    )
+    st.markdown("---")
+
+    # Load model
+    model_path = "random_forest_model.tflite"  # Update the path if needed
+    interpreter = load_model(model_path)
+
+    # Input Area
+    st.markdown("### Enter Your Text Below")
+    user_input = st.text_area("Type or paste a sentence:", placeholder="e.g., You're such a loser.")
+    detect_button = st.button("🚨 Detect Cyberbullying")
+
+    # Detect
+    if detect_button:
+        if user_input.strip():
+            st.write("🔄 Detecting...")
+            # Preprocess the input
+            input_data = preprocess_text(user_input)
+            
+            # Predict
+            prediction = predict(interpreter, input_data)
+            category_index = np.argmax(prediction)
+            confidence = np.max(prediction)
+
+            # Display Results
+            st.success(f"🛡️ **Category**: {LABELS[category_index]}")
+            st.info(f"🔢 **Confidence Score**: {confidence:.2f}")
         else:
-            # Display the uploaded image
-            st.image(image, caption="Uploaded Image", use_column_width=True)
+            st.error("❌ Please enter some text to detect cyberbullying.")
 
-            # Button to trigger prediction
-            if st.button("Classify MRI Scan"):
-                with st.spinner("Classifying..."):
-                    # Make prediction
-                    prediction = predict(image)
-                    predicted_class = classes[np.argmax(prediction)]
+    # Footer
+    st.markdown("---")
+    st.markdown(
+        """
+        ### Disclaimer
+        This tool is for educational purposes only and may not always produce accurate results. 
+        Please use it responsibly and seek professional advice when dealing with serious cases of cyberbullying.
 
-                    # Display prediction result
-                    st.subheader("Prediction Result")
-                    st.write(f"**{predicted_class}**")
-                    
-                    # Explanation of predicted class
-                    explanations = {
-                        "Mild Demented": "Noticeable cognitive impairment, impacting daily life and decision-making.",
-                        "Moderate Demented": "Significant cognitive impairment, requiring assistance with daily tasks.",
-                        "Non Demented": "Normal brain function without signs of dementia.",
-                        "Very Mild Demented": "Early signs of cognitive decline, minimal impact on daily activities."
-                    }
-                    st.write(f"*Explanation:* {explanations[predicted_class]}")
+        Created with ❤️ by Winaaa.
+        """
+    )
 
-    except Exception as e:
-        st.error(f"Error processing the image: {e}")
+if __name__ == "__main__":
+    main()
