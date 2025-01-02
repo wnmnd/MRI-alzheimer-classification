@@ -1,132 +1,107 @@
 import streamlit as st
-import tensorflow as tf
 import numpy as np
-from tensorflow.keras.preprocessing.text import Tokenizer
-from tensorflow.keras.preprocessing.sequence import pad_sequences
-import re
+import tensorflow as tf
+from PIL import Image
+import requests
+from pathlib import Path
 
-# Set page config
-st.set_page_config(
-    page_title="Cyberbullying Detection",
-    page_icon="🛡️",
-    layout="centered"
-)
-
-# Custom CSS
-st.markdown("""
+# Add a background color to the app and update button styling
+st.markdown(
+    """
     <style>
-    .main {
-        padding: 2rem;
+    .stApp {
+        background-color: #f5f5dc;  
     }
     .stButton>button {
-        background-color: #ff4b4b;
+        background-color: #8B4513;  
         color: white;
-        border-radius: 10px;
-        padding: 0.5rem 2rem;
-        font-weight: bold;
-    }
-    .result-box {
-        padding: 1.5rem;
-        border-radius: 10px;
-        background-color: #f0f2f6;
-        margin: 1rem 0;
-    }
-    .category-label {
-        font-weight: bold;
-        color: #ff4b4b;
+        font-size: 16px;
     }
     </style>
-""", unsafe_allow_html=True)
+    """,
+    unsafe_allow_html=True,
+)
 
-# Load and prepare the model
+# Function to download and load the model
 @st.cache_resource
-def load_model():
-    interpreter = tf.lite.Interpreter(model_path="random_forest_model.tflite")
+def download_and_load_model():
+    model_url = "https://drive.google.com/uc?export=download&id=1iO013Rqp0dOlHHoFuQsNQEWsBS2f11mj"
+    model_path = Path("cnn_model.tflite")
+
+    if not model_path.exists():
+        with st.spinner("Downloading the model..."):
+            response = requests.get(model_url)
+            model_path.write_bytes(response.content)
+    interpreter = tf.lite.Interpreter(model_path=str(model_path))
     interpreter.allocate_tensors()
     return interpreter
 
-# Text preprocessing function
-def preprocess_text(text):
-    # Remove special characters and digits
-    text = re.sub(r'[^a-zA-Z\s]', '', text)
-    # Convert to lowercase
-    text = text.lower()
-    return text
+# Load the TFLite model
+model = download_and_load_model()
 
-# Initialize the tokenizer
-tokenizer = Tokenizer()
+# Define classes as per training
+classes = ["Mild Demented", "Moderate Demented", "Non Demented", "Very Mild Demented"]
 
-# Categories
-categories = ['Not Cyberbullying', 'Gender', 'Religion', 'Age', 'Ethnicity']
+# Function to preprocess image and make prediction
+def predict(image):
+    input_details = model.get_input_details()
+    input_shape = input_details[0]['shape']
 
-def main():
-    # Header
-    st.title("🛡️ Cyberbullying Detection System")
-    st.markdown("""
-        <p style='font-size: 1.2rem; color: #666;'>
-        Detect different types of cyberbullying in text messages and social media posts.
-        </p>
-    """, unsafe_allow_html=True)
-    
-    # Text input
-    user_input = st.text_area(
-        "Enter the text to analyze:",
-        height=150,
-        placeholder="Type or paste the text here..."
-    )
-    
-    # Detect button
-    if st.button("Detect", key="detect_button"):
-        if user_input.strip() == "":
-            st.warning("Please enter some text to analyze.")
+    image = image.resize((input_shape[1], input_shape[2]))  
+    image = np.array(image).astype(np.float32) / 255.0
+    image = np.expand_dims(image, axis=0)  
+
+    model.set_tensor(input_details[0]['index'], image)
+    model.invoke()
+    prediction = model.get_tensor(model.get_output_details()[0]['index'])
+    return prediction
+
+# App Layout
+st.title("🧠 Alzheimer's MRI Classification")
+st.markdown("""
+Welcome to the **Alzheimer Classification Tool**! 
+This app classifies MRI scans into stages of Alzheimer's disease using deep learning. Upload an MRI scan below, and the model will predict whether the scan indicates:
+- **Mild Demented**: Noticeable cognitive impairment, impacting daily life and decision-making.
+- **Moderate Demented**: Significant cognitive impairment, requiring assistance with daily tasks.
+- **Non Demented**: Normal brain function without signs of dementia.
+- **Very Mild Demented**: Early signs of cognitive decline, minimal impact on daily activities.
+""")
+
+# File uploader
+uploaded_file = st.file_uploader("Upload an MRI scan image", type=["jpg", "png", "jpeg"])
+
+# Check if the uploaded file is an MRI scan (basic check by image mode)
+if uploaded_file is not None:
+    try:
+        # Open the image
+        image = Image.open(uploaded_file)
+
+        # Check if the image is a valid MRI scan (basic check)
+        if image.mode not in ['RGB', 'L']:
+            st.error("Invalid image format! Please upload a valid MRI scan image.")
         else:
-            with st.spinner("Analyzing text..."):
-                # Load the model
-                interpreter = load_model()
-                
-                # Get input and output tensors
-                input_details = interpreter.get_input_details()
-                output_details = interpreter.get_output_details()
-                
-                # Preprocess the input text
-                processed_text = preprocess_text(user_input)
-                
-                # Tokenize and pad the text (adjust max_length according to your model)
-                sequence = tokenizer.texts_to_sequences([processed_text])
-                padded_sequence = pad_sequences(sequence, maxlen=100)
-                
-                # Set the input tensor
-                interpreter.set_tensor(input_details[0]['index'], padded_sequence)
-                
-                # Run inference
-                interpreter.invoke()
-                
-                # Get the output tensor
-                predictions = interpreter.get_tensor(output_details[0]['index'])
-                predicted_class = np.argmax(predictions[0])
-                
-                # Display results
-                st.markdown("<div class='result-box'>", unsafe_allow_html=True)
-                st.markdown(f"### Detected Category: <span class='category-label'>{categories[predicted_class]}</span>", unsafe_allow_html=True)
-                
-                # Display confidence scores
-                st.markdown("### Confidence Scores:")
-                for category, confidence in zip(categories, predictions[0]):
-                    confidence_percentage = confidence * 100
-                    st.progress(confidence_percentage / 100)
-                    st.text(f"{category}: {confidence_percentage:.2f}%")
-                st.markdown("</div>", unsafe_allow_html=True)
-                
-                # Add recommendations based on the detection
-                if predicted_class != 0:
-                    st.markdown("""
-                        ### Recommendations:
-                        1. 🚫 Do not engage with harmful content
-                        2. 📸 Take screenshots as evidence
-                        3. 🔒 Block the sender if possible
-                        4. 📢 Report to relevant authorities
-                        5. 💬 Seek support from trusted individuals
-                    """)
+            # Display the uploaded image
+            st.image(image, caption="Uploaded Image", use_column_width=True)
 
-if __name__ == "__main__":
-    main()
+            # Button to trigger prediction
+            if st.button("Classify MRI Scan"):
+                with st.spinner("Classifying..."):
+                    # Make prediction
+                    prediction = predict(image)
+                    predicted_class = classes[np.argmax(prediction)]
+
+                    # Display prediction result
+                    st.subheader("Prediction Result")
+                    st.write(f"**{predicted_class}**")
+
+                    # Explanation of predicted class
+                    explanations = {
+                        "Mild Demented": "Noticeable cognitive impairment, impacting daily life and decision-making.",
+                        "Moderate Demented": "Significant cognitive impairment, requiring assistance with daily tasks.",
+                        "Non Demented": "Normal brain function without signs of dementia.",
+                        "Very Mild Demented": "Early signs of cognitive decline, minimal impact on daily activities."
+                    }
+                    st.write(f"*Explanation:* {explanations[predicted_class]}")
+
+    except Exception as e:
+        st.error(f"Error processing the image: {e}")
